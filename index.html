@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>数据质量稽核仪表盘 V4.0 (PC专业版)</title>
+    <title>数据质量稽核仪表盘 V5.0 (支持Excel/CSV)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
 
@@ -75,6 +76,9 @@
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         .chart-container { position: relative; height: 320px; width: 100%; }
+        
+        .badge-excel { background: #d1fae5; color: #047857; border: 1px solid #a7f3d0; }
+        .badge-csv { background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; }
     </style>
 </head>
 <body class="p-6">
@@ -86,7 +90,7 @@
             </div>
             <div>
                 <h1 class="text-xl font-bold text-slate-800 tracking-tight">数据稽核<span class="text-indigo-600">Pro</span></h1>
-                <p class="text-xs text-slate-500">自动缺失分析系统 V4.0</p>
+                <p class="text-xs text-slate-500">支持 Excel (.xlsx/.xls) 与 CSV</p>
             </div>
         </div>
         <div class="flex gap-4">
@@ -106,20 +110,23 @@
                         <span class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">1</span>
                         上传数据统计表
                     </h2>
-                    <select id="encodingData" class="text-xs bg-slate-100 border-none rounded px-3 py-1.5 text-slate-600 hover:bg-slate-200 cursor-pointer focus:ring-2 focus:ring-blue-500 transition-all">
-                        <option value="GBK" selected>编码: GBK (Excel默认)</option>
-                        <option value="UTF-8">编码: UTF-8</option>
-                    </select>
+                    <div class="flex items-center gap-2" title="仅对 CSV 文件生效，Excel 文件自动识别">
+                        <i class="ri-information-line text-slate-400 cursor-help"></i>
+                        <select id="encodingData" class="text-xs bg-slate-100 border-none rounded px-3 py-1.5 text-slate-600 hover:bg-slate-200 cursor-pointer focus:ring-2 focus:ring-blue-500 transition-all">
+                            <option value="GBK" selected>CSV编码: GBK</option>
+                            <option value="UTF-8">CSV编码: UTF-8</option>
+                        </select>
+                    </div>
                 </div>
                 
-                <input type="file" id="fileDataInput" accept=".csv" class="hidden" />
+                <input type="file" id="fileDataInput" accept=".csv, .xlsx, .xls" class="hidden" />
 
                 <div id="uploadZone1" class="upload-card rounded-xl h-40 flex flex-col items-center justify-center cursor-pointer group">
                     <div id="icon1" class="w-12 h-12 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                        <i class="ri-upload-cloud-2-line text-2xl"></i>
+                        <i class="ri-file-excel-2-line text-2xl"></i>
                     </div>
-                    <p id="text1" class="text-sm font-medium text-slate-600">点击选择 CSV 文件</p>
-                    <p class="text-xs text-slate-400 mt-1">支持拖拽上传</p>
+                    <p id="text1" class="text-sm font-medium text-slate-600">点击上传统计表</p>
+                    <p class="text-xs text-slate-400 mt-1">支持 .xlsx, .xls, .csv</p>
                 </div>
             </div>
 
@@ -129,20 +136,23 @@
                         <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm font-bold">2</span>
                         上传更新频率表
                     </h2>
-                    <select id="encodingRule" class="text-xs bg-slate-100 border-none rounded px-3 py-1.5 text-slate-600 hover:bg-slate-200 cursor-pointer focus:ring-2 focus:ring-emerald-500 transition-all">
-                        <option value="GBK" selected>编码: GBK (Excel默认)</option>
-                        <option value="UTF-8">编码: UTF-8</option>
-                    </select>
+                    <div class="flex items-center gap-2" title="仅对 CSV 文件生效，Excel 文件自动识别">
+                        <i class="ri-information-line text-slate-400 cursor-help"></i>
+                        <select id="encodingRule" class="text-xs bg-slate-100 border-none rounded px-3 py-1.5 text-slate-600 hover:bg-slate-200 cursor-pointer focus:ring-2 focus:ring-emerald-500 transition-all">
+                            <option value="GBK" selected>CSV编码: GBK</option>
+                            <option value="UTF-8">CSV编码: UTF-8</option>
+                        </select>
+                    </div>
                 </div>
 
-                <input type="file" id="fileRuleInput" accept=".csv" class="hidden" />
+                <input type="file" id="fileRuleInput" accept=".csv, .xlsx, .xls" class="hidden" />
 
                 <div id="uploadZone2" class="upload-card rounded-xl h-40 flex flex-col items-center justify-center cursor-pointer group">
                     <div id="icon2" class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                         <i class="ri-file-list-3-line text-2xl"></i>
                     </div>
-                    <p id="text2" class="text-sm font-medium text-slate-600">点击选择 CSV 文件</p>
-                    <p class="text-xs text-slate-400 mt-1">支持拖拽上传</p>
+                    <p id="text2" class="text-sm font-medium text-slate-600">点击上传频率表</p>
+                    <p class="text-xs text-slate-400 mt-1">支持 .xlsx, .xls, .csv</p>
                 </div>
             </div>
         </section>
@@ -254,42 +264,49 @@
     </main>
 
 <script>
-    // --- 1. 修复后的上传逻辑 (核心) ---
-    // 使用闭包防止全局污染，清晰的事件绑定
-    function setupUpload(zoneId, inputId, iconId, textId, fileNameDisplayId) {
+    // --- 1. 上传逻辑 ---
+    function setupUpload(zoneId, inputId, iconId, textId) {
         const zone = document.getElementById(zoneId);
         const input = document.getElementById(inputId);
         const icon = document.getElementById(iconId);
         const text = document.getElementById(textId);
 
-        // 点击区域 -> 触发 Input 点击
         zone.addEventListener('click', (e) => {
-            // 阻止冒泡，虽然 input 在外部，但这是一个好习惯
             e.stopPropagation();
-            input.value = ''; // 允许重复选择同一文件
+            input.value = ''; 
             input.click();
         });
 
-        // 监听文件变化
         input.addEventListener('change', (e) => {
             if (e.target.files && e.target.files[0]) {
                 const file = e.target.files[0];
-                // 更新 UI 状态
+                const isExcel = file.name.match(/\.(xlsx|xls)$/i);
+                
                 zone.classList.add('active');
-                icon.className = "w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3 transition-transform scale-110";
+                
+                // 根据文件类型显示不同的标签样式
+                const badgeClass = isExcel ? "badge-excel" : "badge-csv";
+                const typeText = isExcel ? "Excel" : "CSV";
+                
+                icon.className = "w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-transform scale-110 " + (isExcel ? "bg-emerald-100 text-emerald-600" : "bg-indigo-100 text-indigo-600");
                 icon.innerHTML = '<i class="ri-check-line text-2xl"></i>';
-                text.innerHTML = `<span class="font-bold text-emerald-700">${file.name}</span>`;
+                
+                text.innerHTML = `
+                    <div class="flex flex-col items-center gap-1">
+                        <span class="font-bold text-slate-700">${file.name}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full ${badgeClass}">${typeText}</span>
+                    </div>
+                `;
                 text.classList.remove('text-slate-600');
             }
         });
 
-        // 拖拽支持
+        // 拖拽支持略
         zone.addEventListener('dragover', (e) => {
             e.preventDefault();
             zone.style.borderColor = '#6366f1';
             zone.style.background = 'rgba(238, 242, 255, 0.9)';
         });
-
         zone.addEventListener('dragleave', (e) => {
             e.preventDefault();
             if (!input.files[0]) {
@@ -297,39 +314,72 @@
                 zone.style.background = 'rgba(248, 250, 252, 0.5)';
             }
         });
-
         zone.addEventListener('drop', (e) => {
             e.preventDefault();
             if (e.dataTransfer.files && e.dataTransfer.files[0]) {
                 input.files = e.dataTransfer.files;
-                // 手动触发 change 事件更新 UI
                 const event = new Event('change');
                 input.dispatchEvent(event);
             }
         });
     }
 
-    // 初始化上传组件
     setupUpload('uploadZone1', 'fileDataInput', 'icon1', 'text1');
     setupUpload('uploadZone2', 'fileRuleInput', 'icon2', 'text2');
 
 
-    // --- 2. 数据分析逻辑 ---
+    // --- 2. 核心：混合解析逻辑 (Excel + CSV) ---
+    async function parseMixedFile(file, csvEncoding) {
+        return new Promise((resolve, reject) => {
+            const fileName = file.name.toLowerCase();
+            
+            if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+                // Excel 处理分支
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        // 转换为 JSON，所有内容尽量转为文本以避免日期格式问题
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                            defval: '',
+                            raw: false // 尝试将所有内容解析为字符串
+                        });
+                        
+                        if (jsonData.length === 0) throw new Error("Excel 文件为空");
+                        
+                        // 构造与 PapaParse 相同的输出结构
+                        const headers = Object.keys(jsonData[0]);
+                        resolve({
+                            data: jsonData,
+                            meta: { fields: headers }
+                        });
+                    } catch (err) {
+                        reject(new Error("Excel 解析失败: " + err.message));
+                    }
+                };
+                reader.onerror = () => reject(new Error("文件读取失败"));
+                reader.readAsArrayBuffer(file);
+
+            } else {
+                // CSV 处理分支 (使用 PapaParse)
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    encoding: csvEncoding,
+                    complete: (res) => resolve(res),
+                    error: (err) => reject(err)
+                });
+            }
+        });
+    }
+
+    // --- 3. 分析逻辑 ---
     let globalResults = [];
     let trendChart = null;
     let pieChart = null;
-
-    function parseCSV(file, encoding) {
-        return new Promise((resolve, reject) => {
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                encoding: encoding,
-                complete: (res) => resolve(res),
-                error: (err) => reject(err)
-            });
-        });
-    }
 
     async function startAnalysis() {
         const btn = document.getElementById('analyzeBtn');
@@ -354,53 +404,64 @@
                 throw new Error("请先完成两个文件的上传 (步骤1 和 步骤2)。");
             }
 
-            // 解析文件
+            // 并行解析，各自判断文件类型
             const [resData, resRule] = await Promise.all([
-                parseCSV(fileData, encData),
-                parseCSV(fileRule, encRule)
+                parseMixedFile(fileData, encData),
+                parseMixedFile(fileRule, encRule)
             ]);
 
-            // 获取表头
+            // 验证表头
             const headersData = resData.meta.fields || [];
             const headersRule = resRule.meta.fields || [];
 
-            // 智能识别列名
-            const keyNameData = headersData.find(h => /表名|文件|前缀/.test(h));
-            const keyDates = headersData.filter(h => /^\d{8}$/.test(h)).sort();
-            const keyNameRule = headersRule.find(h => /表名|文件|名称/.test(h));
-            const keyFreqRule = headersRule.find(h => /频率|周期/.test(h));
+            console.log("Stats Headers:", headersData);
+            console.log("Rule Headers:", headersRule);
 
-            if (!keyNameData) throw new Error("统计表中未找到【表名】列，请检查文件或尝试更换编码。");
-            if (keyDates.length === 0) throw new Error("统计表中未找到【日期】列 (格式如 20251201)。");
-            if (!keyNameRule || !keyFreqRule) throw new Error("规则表中未找到【表名】或【频率】列，请检查文件。");
+            // 智能识别列名
+            const keyNameData = headersData.find(h => /表名|文件|前缀/i.test(h));
+            // 查找日期列: Excel解析后 key 可能是 "20251201" 这种字符串
+            const keyDates = headersData.filter(h => /^\d{8}$/.test(h)).sort();
+            
+            const keyNameRule = headersRule.find(h => /表名|文件|名称/i.test(h));
+            const keyFreqRule = headersRule.find(h => /频率|周期/i.test(h));
+
+            if (!keyNameData) throw new Error(`统计表解析失败：找不到【表名】列。\n读取到的列：${headersData.join(', ')}`);
+            if (keyDates.length === 0) throw new Error(`统计表解析失败：找不到【日期】列 (格式如 20251201)。\n读取到的列：${headersData.join(', ')}`);
+            if (!keyNameRule || !keyFreqRule) throw new Error(`规则表解析失败：找不到【表名】或【频率】列。\n读取到的列：${headersRule.join(', ')}`);
 
             // 建立规则库
             const ruleMap = new Map();
             resRule.data.forEach(row => {
-                const name = row[keyNameRule]?.trim();
-                const freq = row[keyFreqRule]?.trim();
-                if (name && freq) ruleMap.set(name, freq);
+                const name = row[keyNameRule]; // 可能是 undefined
+                const freq = row[keyFreqRule];
+                if (name && freq) ruleMap.set(String(name).trim(), String(freq).trim());
             });
 
             // 开始分析
             globalResults = [];
-            let totalMonitored = 0;
             const monitoredSet = new Set();
 
             resData.data.forEach(row => {
-                const tableName = row[keyNameData]?.trim();
-                if (!tableName || !ruleMap.has(tableName)) return; // 仅分析规则表中存在的
+                const tableName = row[keyNameData];
+                if (!tableName) return;
+                
+                const tableNameStr = String(tableName).trim();
+                if (!ruleMap.has(tableNameStr)) return; // 仅分析规则表中存在的
 
-                monitoredSet.add(tableName);
-                const freq = ruleMap.get(tableName);
+                monitoredSet.add(tableNameStr);
+                const freq = ruleMap.get(tableNameStr);
 
                 keyDates.forEach(date => {
-                    const count = parseInt(row[date]);
-                    const day = parseInt(date.substring(6, 8)); // YYYYMMDD -> DD
+                    // 确保取到的值转为数字进行判断
+                    let val = row[date];
+                    // 处理 Excel 可能存在的空字符串或 undefined
+                    if (val === undefined || val === null || val === '') val = 0;
+                    const count = parseInt(val);
+                    
+                    const day = parseInt(date.substring(6, 8)); 
                     let isMissing = false;
                     let reason = "";
 
-                    // 核心业务逻辑
                     if (freq.includes("日")) {
                         if (isNaN(count) || count <= 0) { isMissing = true; reason = "每日必须上传"; }
                     } else if (freq.includes("周")) {
@@ -408,7 +469,7 @@
                             if (isNaN(count) || count <= 0) { isMissing = true; reason = "每周节点(7/14/21/28)缺失"; }
                         }
                     } else if (freq.includes("月")) {
-                        if (day === 1) { // 假设每月1号
+                        if (day === 1) { 
                             if (isNaN(count) || count <= 0) { isMissing = true; reason = "每月1日缺失"; }
                         }
                     }
@@ -416,7 +477,7 @@
                     if (isMissing) {
                         globalResults.push({
                             date: date,
-                            name: tableName,
+                            name: tableNameStr,
                             freq: freq,
                             reason: reason
                         });
@@ -424,24 +485,15 @@
                 });
             });
 
-            // 计算得分
-            // 假设满分100，每发现一个缺失扣 0.1 分 (根据体量调整)，最低 0 分
-            // 或者： (应有数据总量 - 缺失量) / 应有数据总量
-            // 这里简单做一个模拟得分
-            const totalRequiredPoints = monitoredSet.size * keyDates.length; // 这是一个粗略估计，实际上周更月更并不是每天都要
-            // 为了展示效果，我们用： 100 - (缺失数 / (监控表数 * 天数) * 100 * 权重)
-            // 简单点： 100 - (缺失条数 * 0.5)
             let score = 100 - (globalResults.length * 0.5);
             if (score < 0) score = 0;
             score = Math.round(score);
 
-            // 渲染 UI
             renderDashboard(monitoredSet.size, keyDates.length, globalResults.length, score);
             renderCharts(keyDates);
             renderTable(globalResults);
             initDateFilter(keyDates);
 
-            // 显示结果区
             dashboard.classList.remove('hidden');
             setTimeout(() => {
                 window.scrollTo({ top: dashboard.offsetTop - 100, behavior: 'smooth' });
@@ -459,13 +511,11 @@
     }
 
     function renderDashboard(tables, days, missing, score) {
-        // 数字增长动画
         animateNumber('totalTables', tables);
         animateNumber('totalDays', days);
         animateNumber('totalMissing', missing);
         animateNumber('scoreVal', score);
 
-        // 分数颜色
         const scoreEl = document.getElementById('scoreVal');
         const scoreIcon = document.getElementById('scoreIcon');
         if (score >= 90) {
@@ -481,7 +531,6 @@
     }
 
     function renderCharts(dates) {
-        // 1. 趋势图
         const trendData = {};
         dates.forEach(d => trendData[d] = 0);
         globalResults.forEach(r => trendData[r.date] = (trendData[r.date] || 0) + 1);
@@ -516,7 +565,6 @@
             }
         });
 
-        // 2. 饼图
         const pieData = { "日更": 0, "周更": 0, "月更": 0 };
         globalResults.forEach(r => {
             if (r.freq.includes("日")) pieData["日更"]++;
@@ -560,7 +608,6 @@
         }
         emptyState.classList.add('hidden');
 
-        // 限制显示 500 条避免卡顿
         const displayData = data.slice(0, 500);
 
         displayData.forEach(row => {
