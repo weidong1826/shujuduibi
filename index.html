@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据质量稽核仪表盘 V4.0 (PC专业版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        
+        body { 
+            font-family: 'Noto Sans SC', sans-serif; 
+            background-color: #f0f2f5; 
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+            background-attachment: fixed;
+            color: #1e293b; 
+            min-height: 100vh;
+        }
+        
+        /* 玻璃拟态卡片 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+
+        /* 上传区域动画 */
+        .upload-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px dashed #cbd5e1;
+            background: rgba(248, 250, 252, 0.5);
+        }
+        .upload-card:hover {
+            border-color: #6366f1;
+            background: rgba(238, 242, 255, 0.8);
+            transform: translateY(-2px);
+        }
+        .upload-card.active {
+            border-color: #10b981;
+            background: rgba(236, 253, 245, 0.8);
+        }
+
+        /* 按钮光效 */
+        .btn-glow {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-glow::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 60%);
+            transform: scale(0);
+            transition: transform 0.6s ease-out;
+        }
+        .btn-glow:hover::after {
+            transform: scale(1);
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .chart-container { position: relative; height: 320px; width: 100%; }
+    </style>
+</head>
+<body class="p-6">
+
+    <nav class="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-white/20 px-8 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white shadow-lg">
+                <i class="ri-bar-chart-box-line text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">数据稽核<span class="text-indigo-600">Pro</span></h1>
+                <p class="text-xs text-slate-500">自动缺失分析系统 V4.0</p>
+            </div>
+        </div>
+        <div class="flex gap-4">
+             <button onclick="location.reload()" class="text-sm font-medium text-slate-600 hover:text-indigo-600 flex items-center gap-1 transition-colors">
+                <i class="ri-refresh-line"></i> 重置系统
+            </button>
+        </div>
+    </nav>
+
+    <main class="max-w-[1600px] mx-auto mt-24 space-y-8 pb-12">
+
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <div class="glass-panel rounded-2xl p-6 relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold">1</span>
+                        上传数据统计表
+                    </h2>
+                    <select id="encodingData" class="text-xs bg-slate-100 border-none rounded px-3 py-1.5 text-slate-600 hover:bg-slate-200 cursor-pointer focus:ring-2 focus:ring-blue-500 transition-all">
+                        <option value="GBK" selected>编码: GBK (Excel默认)</option>
+                        <option value="UTF-8">编码: UTF-8</option>
+                    </select>
+                </div>
+                
+                <input type="file" id="fileDataInput" accept=".csv" class="hidden" />
+
+                <div id="uploadZone1" class="upload-card rounded-xl h-40 flex flex-col items-center justify-center cursor-pointer group">
+                    <div id="icon1" class="w-12 h-12 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <i class="ri-upload-cloud-2-line text-2xl"></i>
+                    </div>
+                    <p id="text1" class="text-sm font-medium text-slate-600">点击选择 CSV 文件</p>
+                    <p class="text-xs text-slate-400 mt-1">支持拖拽上传</p>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-6 relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm font-bold">2</span>
+                        上传更新频率表
+                    </h2>
+                    <select id="encodingRule" class="text-xs bg-slate-100 border-none rounded px-3 py-1.5 text-slate-600 hover:bg-slate-200 cursor-pointer focus:ring-2 focus:ring-emerald-500 transition-all">
+                        <option value="GBK" selected>编码: GBK (Excel默认)</option>
+                        <option value="UTF-8">编码: UTF-8</option>
+                    </select>
+                </div>
+
+                <input type="file" id="fileRuleInput" accept=".csv" class="hidden" />
+
+                <div id="uploadZone2" class="upload-card rounded-xl h-40 flex flex-col items-center justify-center cursor-pointer group">
+                    <div id="icon2" class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <i class="ri-file-list-3-line text-2xl"></i>
+                    </div>
+                    <p id="text2" class="text-sm font-medium text-slate-600">点击选择 CSV 文件</p>
+                    <p class="text-xs text-slate-400 mt-1">支持拖拽上传</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="flex justify-center">
+            <button id="analyzeBtn" onclick="startAnalysis()" class="btn-glow bg-slate-800 text-white px-10 py-4 rounded-xl font-bold text-lg shadow-xl shadow-slate-800/20 hover:bg-slate-700 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex items-center gap-3">
+                <i class="ri-magic-line"></i> 立即分析数据
+            </button>
+        </div>
+
+        <div id="errorBanner" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-4 shadow-sm animate-pulse">
+            <div class="text-red-500 text-xl"><i class="ri-error-warning-fill"></i></div>
+            <div>
+                <h3 class="font-bold text-red-800">分析无法完成</h3>
+                <p id="errorMsg" class="text-sm text-red-600 mt-1"></p>
+            </div>
+        </div>
+
+        <div id="dashboard" class="hidden space-y-8">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="glass-panel rounded-2xl p-6 flex items-center gap-6 border-l-4 border-indigo-500">
+                    <div class="flex-1">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">数据健康评分</p>
+                        <div class="flex items-baseline gap-2">
+                            <h2 id="scoreVal" class="text-4xl font-black text-slate-800">--</h2>
+                            <span class="text-sm text-slate-400">/ 100</span>
+                        </div>
+                    </div>
+                    <div id="scoreIcon" class="text-4xl text-slate-200"><i class="ri-pulse-line"></i></div>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-6 border-l-4 border-blue-400">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">监控表数量</p>
+                    <h2 id="totalTables" class="text-3xl font-bold text-slate-700 mt-1">0</h2>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-6 border-l-4 border-emerald-400">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">分析天数</p>
+                    <h2 id="totalDays" class="text-3xl font-bold text-slate-700 mt-1">0</h2>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-6 border-l-4 border-red-400 bg-red-50/50">
+                    <p class="text-xs font-bold text-red-400 uppercase tracking-wider">缺失项总计</p>
+                    <h2 id="totalMissing" class="text-3xl font-bold text-red-600 mt-1">0</h2>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="glass-panel rounded-2xl p-6 lg:col-span-2">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-slate-700 text-lg"><i class="ri-line-chart-line mr-2 text-blue-500"></i>每日缺失趋势</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-2xl p-6">
+                    <h3 class="font-bold text-slate-700 text-lg mb-6"><i class="ri-pie-chart-2-line mr-2 text-purple-500"></i>缺失类型分布</h3>
+                    <div class="chart-container">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl overflow-hidden">
+                <div class="px-6 py-5 border-b border-slate-200/60 bg-white/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <h3 class="font-bold text-slate-700 text-lg flex items-center">
+                        <i class="ri-file-list-line mr-2 text-indigo-500"></i>缺失明细清单
+                    </h3>
+                    
+                    <div class="relative">
+                        <i class="ri-calendar-event-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <select id="dateFilter" class="pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none shadow-sm cursor-pointer hover:bg-slate-50 transition-colors appearance-none">
+                            <option value="ALL">显示全部日期</option>
+                        </select>
+                        <i class="ri-arrow-down-s-line absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50/80 sticky top-0 z-10 backdrop-blur-sm">
+                            <tr>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">日期</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">表名</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">频率规则</th>
+                                <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">诊断结果</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTableBody" class="divide-y divide-slate-100 text-sm">
+                            </tbody>
+                    </table>
+                    
+                    <div id="emptyState" class="hidden py-16 flex flex-col items-center justify-center text-slate-400">
+                        <i class="ri-checkbox-circle-line text-6xl text-emerald-100 mb-4"></i>
+                        <p class="text-lg font-medium text-emerald-600">当前无缺失数据</p>
+                        <p class="text-sm">该日期范围内数据完整</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <footer class="text-center text-slate-400 text-sm mt-12">
+            <p>© 2025 Data Insight Tool · Local Processing Only</p>
+        </footer>
+
+    </main>
+
+<script>
+    // --- 1. 修复后的上传逻辑 (核心) ---
+    // 使用闭包防止全局污染，清晰的事件绑定
+    function setupUpload(zoneId, inputId, iconId, textId, fileNameDisplayId) {
+        const zone = document.getElementById(zoneId);
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+        const text = document.getElementById(textId);
+
+        // 点击区域 -> 触发 Input 点击
+        zone.addEventListener('click', (e) => {
+            // 阻止冒泡，虽然 input 在外部，但这是一个好习惯
+            e.stopPropagation();
+            input.value = ''; // 允许重复选择同一文件
+            input.click();
+        });
+
+        // 监听文件变化
+        input.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                const file = e.target.files[0];
+                // 更新 UI 状态
+                zone.classList.add('active');
+                icon.className = "w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3 transition-transform scale-110";
+                icon.innerHTML = '<i class="ri-check-line text-2xl"></i>';
+                text.innerHTML = `<span class="font-bold text-emerald-700">${file.name}</span>`;
+                text.classList.remove('text-slate-600');
+            }
+        });
+
+        // 拖拽支持
+        zone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            zone.style.borderColor = '#6366f1';
+            zone.style.background = 'rgba(238, 242, 255, 0.9)';
+        });
+
+        zone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            if (!input.files[0]) {
+                zone.style.borderColor = '#cbd5e1';
+                zone.style.background = 'rgba(248, 250, 252, 0.5)';
+            }
+        });
+
+        zone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                input.files = e.dataTransfer.files;
+                // 手动触发 change 事件更新 UI
+                const event = new Event('change');
+                input.dispatchEvent(event);
+            }
+        });
+    }
+
+    // 初始化上传组件
+    setupUpload('uploadZone1', 'fileDataInput', 'icon1', 'text1');
+    setupUpload('uploadZone2', 'fileRuleInput', 'icon2', 'text2');
+
+
+    // --- 2. 数据分析逻辑 ---
+    let globalResults = [];
+    let trendChart = null;
+    let pieChart = null;
+
+    function parseCSV(file, encoding) {
+        return new Promise((resolve, reject) => {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                encoding: encoding,
+                complete: (res) => resolve(res),
+                error: (err) => reject(err)
+            });
+        });
+    }
+
+    async function startAnalysis() {
+        const btn = document.getElementById('analyzeBtn');
+        const dashboard = document.getElementById('dashboard');
+        const errorBanner = document.getElementById('errorBanner');
+        const errorMsg = document.getElementById('errorMsg');
+
+        // Reset UI
+        btn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> 正在运算中...';
+        btn.disabled = true;
+        btn.classList.add('opacity-75');
+        dashboard.classList.add('hidden');
+        errorBanner.classList.add('hidden');
+
+        const fileData = document.getElementById('fileDataInput').files[0];
+        const fileRule = document.getElementById('fileRuleInput').files[0];
+        const encData = document.getElementById('encodingData').value;
+        const encRule = document.getElementById('encodingRule').value;
+
+        try {
+            if (!fileData || !fileRule) {
+                throw new Error("请先完成两个文件的上传 (步骤1 和 步骤2)。");
+            }
+
+            // 解析文件
+            const [resData, resRule] = await Promise.all([
+                parseCSV(fileData, encData),
+                parseCSV(fileRule, encRule)
+            ]);
+
+            // 获取表头
+            const headersData = resData.meta.fields || [];
+            const headersRule = resRule.meta.fields || [];
+
+            // 智能识别列名
+            const keyNameData = headersData.find(h => /表名|文件|前缀/.test(h));
+            const keyDates = headersData.filter(h => /^\d{8}$/.test(h)).sort();
+            const keyNameRule = headersRule.find(h => /表名|文件|名称/.test(h));
+            const keyFreqRule = headersRule.find(h => /频率|周期/.test(h));
+
+            if (!keyNameData) throw new Error("统计表中未找到【表名】列，请检查文件或尝试更换编码。");
+            if (keyDates.length === 0) throw new Error("统计表中未找到【日期】列 (格式如 20251201)。");
+            if (!keyNameRule || !keyFreqRule) throw new Error("规则表中未找到【表名】或【频率】列，请检查文件。");
+
+            // 建立规则库
+            const ruleMap = new Map();
+            resRule.data.forEach(row => {
+                const name = row[keyNameRule]?.trim();
+                const freq = row[keyFreqRule]?.trim();
+                if (name && freq) ruleMap.set(name, freq);
+            });
+
+            // 开始分析
+            globalResults = [];
+            let totalMonitored = 0;
+            const monitoredSet = new Set();
+
+            resData.data.forEach(row => {
+                const tableName = row[keyNameData]?.trim();
+                if (!tableName || !ruleMap.has(tableName)) return; // 仅分析规则表中存在的
+
+                monitoredSet.add(tableName);
+                const freq = ruleMap.get(tableName);
+
+                keyDates.forEach(date => {
+                    const count = parseInt(row[date]);
+                    const day = parseInt(date.substring(6, 8)); // YYYYMMDD -> DD
+                    let isMissing = false;
+                    let reason = "";
+
+                    // 核心业务逻辑
+                    if (freq.includes("日")) {
+                        if (isNaN(count) || count <= 0) { isMissing = true; reason = "每日必须上传"; }
+                    } else if (freq.includes("周")) {
+                        if ([7, 14, 21, 28].includes(day)) {
+                            if (isNaN(count) || count <= 0) { isMissing = true; reason = "每周节点(7/14/21/28)缺失"; }
+                        }
+                    } else if (freq.includes("月")) {
+                        if (day === 1) { // 假设每月1号
+                            if (isNaN(count) || count <= 0) { isMissing = true; reason = "每月1日缺失"; }
+                        }
+                    }
+
+                    if (isMissing) {
+                        globalResults.push({
+                            date: date,
+                            name: tableName,
+                            freq: freq,
+                            reason: reason
+                        });
+                    }
+                });
+            });
+
+            // 计算得分
+            // 假设满分100，每发现一个缺失扣 0.1 分 (根据体量调整)，最低 0 分
+            // 或者： (应有数据总量 - 缺失量) / 应有数据总量
+            // 这里简单做一个模拟得分
+            const totalRequiredPoints = monitoredSet.size * keyDates.length; // 这是一个粗略估计，实际上周更月更并不是每天都要
+            // 为了展示效果，我们用： 100 - (缺失数 / (监控表数 * 天数) * 100 * 权重)
+            // 简单点： 100 - (缺失条数 * 0.5)
+            let score = 100 - (globalResults.length * 0.5);
+            if (score < 0) score = 0;
+            score = Math.round(score);
+
+            // 渲染 UI
+            renderDashboard(monitoredSet.size, keyDates.length, globalResults.length, score);
+            renderCharts(keyDates);
+            renderTable(globalResults);
+            initDateFilter(keyDates);
+
+            // 显示结果区
+            dashboard.classList.remove('hidden');
+            setTimeout(() => {
+                window.scrollTo({ top: dashboard.offsetTop - 100, behavior: 'smooth' });
+            }, 100);
+
+        } catch (e) {
+            console.error(e);
+            errorMsg.innerText = e.message;
+            errorBanner.classList.remove('hidden');
+        } finally {
+            btn.innerHTML = '<i class="ri-magic-line"></i> 立即分析数据';
+            btn.disabled = false;
+            btn.classList.remove('opacity-75');
+        }
+    }
+
+    function renderDashboard(tables, days, missing, score) {
+        // 数字增长动画
+        animateNumber('totalTables', tables);
+        animateNumber('totalDays', days);
+        animateNumber('totalMissing', missing);
+        animateNumber('scoreVal', score);
+
+        // 分数颜色
+        const scoreEl = document.getElementById('scoreVal');
+        const scoreIcon = document.getElementById('scoreIcon');
+        if (score >= 90) {
+            scoreEl.className = "text-4xl font-black text-emerald-500";
+            scoreIcon.innerHTML = '<i class="ri-shield-check-line text-emerald-400"></i>';
+        } else if (score >= 60) {
+            scoreEl.className = "text-4xl font-black text-yellow-500";
+            scoreIcon.innerHTML = '<i class="ri-alert-line text-yellow-400"></i>';
+        } else {
+            scoreEl.className = "text-4xl font-black text-red-500";
+            scoreIcon.innerHTML = '<i class="ri-alarm-warning-line text-red-400"></i>';
+        }
+    }
+
+    function renderCharts(dates) {
+        // 1. 趋势图
+        const trendData = {};
+        dates.forEach(d => trendData[d] = 0);
+        globalResults.forEach(r => trendData[r.date] = (trendData[r.date] || 0) + 1);
+
+        const ctxTrend = document.getElementById('trendChart').getContext('2d');
+        if (trendChart) trendChart.destroy();
+
+        trendChart = new Chart(ctxTrend, {
+            type: 'line',
+            data: {
+                labels: Object.keys(trendData),
+                datasets: [{
+                    label: '缺失数量',
+                    data: Object.values(trendData),
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 2,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, border: { dash: [4, 4] } }
+                }
+            }
+        });
+
+        // 2. 饼图
+        const pieData = { "日更": 0, "周更": 0, "月更": 0 };
+        globalResults.forEach(r => {
+            if (r.freq.includes("日")) pieData["日更"]++;
+            else if (r.freq.includes("周")) pieData["周更"]++;
+            else if (r.freq.includes("月")) pieData["月更"]++;
+        });
+
+        const ctxPie = document.getElementById('pieChart').getContext('2d');
+        if (pieChart) pieChart.destroy();
+
+        pieChart = new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(pieData),
+                datasets: [{
+                    data: Object.values(pieData),
+                    backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981'],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('dataTableBody');
+        const emptyState = document.getElementById('emptyState');
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+            emptyState.classList.remove('hidden');
+            return;
+        }
+        emptyState.classList.add('hidden');
+
+        // 限制显示 500 条避免卡顿
+        const displayData = data.slice(0, 500);
+
+        displayData.forEach(row => {
+            let freqStyle = "bg-slate-100 text-slate-600";
+            if(row.freq.includes("日")) freqStyle = "bg-blue-50 text-blue-600 border border-blue-100";
+            if(row.freq.includes("周")) freqStyle = "bg-purple-50 text-purple-600 border border-purple-100";
+            if(row.freq.includes("月")) freqStyle = "bg-emerald-50 text-emerald-600 border border-emerald-100";
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 transition-colors";
+            tr.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-slate-700 font-mono">${row.date}</td>
+                <td class="px-6 py-4 font-medium text-slate-800">${row.name}</td>
+                <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-md text-xs font-bold ${freqStyle}">${row.freq}</span></td>
+                <td class="px-6 py-4 text-slate-500">${row.reason}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function initDateFilter(dates) {
+        const select = document.getElementById('dateFilter');
+        select.innerHTML = '<option value="ALL">显示全部日期</option>';
+        dates.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d;
+            opt.innerText = d;
+            select.appendChild(opt);
+        });
+
+        select.onchange = (e) => {
+            const val = e.target.value;
+            if (val === "ALL") {
+                renderTable(globalResults);
+            } else {
+                renderTable(globalResults.filter(r => r.date === val));
+            }
+        };
+    }
+
+    function animateNumber(id, end) {
+        const obj = document.getElementById(id);
+        const duration = 1000;
+        const start = 0;
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            obj.innerHTML = Math.floor(progress * (end - start) + start);
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            } else {
+                obj.innerHTML = end;
+            }
+        };
+        window.requestAnimationFrame(step);
+    }
+
+</script>
+</body>
+</html>
